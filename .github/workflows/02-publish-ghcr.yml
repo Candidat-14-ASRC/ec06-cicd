@@ -14,7 +14,6 @@ permissions:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
   build-and-publish:
@@ -23,9 +22,14 @@ jobs:
     outputs:
       digest: ${{ steps.push.outputs.digest }}
       tag: ${{ steps.meta.outputs.tag }}
+      image: ${{ steps.image.outputs.name }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Nom d'image en minuscules (exige par les registres OCI)
+        id: image
+        run: echo "name=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
 
       - name: Connexion a GHCR
         # Aucun secret stocke dans le code : GITHUB_TOKEN est genere
@@ -47,8 +51,8 @@ jobs:
           context: .
           push: true
           tags: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.tag }}
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            ${{ env.REGISTRY }}/${{ steps.image.outputs.name }}:${{ steps.meta.outputs.tag }}
+            ${{ env.REGISTRY }}/${{ steps.image.outputs.name }}:latest
 
       - name: Resume (preuve tag + digest)
         run: |
@@ -72,12 +76,12 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Pull de l'image par digest (artefact exact, pas de rebuild)
-        run: docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ needs.build-and-publish.outputs.digest }}
+        run: docker pull ${{ env.REGISTRY }}/${{ needs.build-and-publish.outputs.image }}@${{ needs.build-and-publish.outputs.digest }}
 
       - name: Demarrage en environnement recette simulee
         run: |
           docker run -d --name recette-test -p 8080:80 \
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ needs.build-and-publish.outputs.digest }}
+            ${{ env.REGISTRY }}/${{ needs.build-and-publish.outputs.image }}@${{ needs.build-and-publish.outputs.digest }}
 
       - name: Test de validation recette
         run: |
