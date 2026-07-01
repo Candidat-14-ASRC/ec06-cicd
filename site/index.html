@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Catal-Log</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      display: flex;
+      min-height: 100vh;
+      align-items: center;
+      justify-content: center;
+      margin: 0;
+    }
+    main {
+      max-width: 560px;
+      padding: 2.5rem 3rem;
+      background: #1e293b;
+      border-radius: 12px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    }
+    h1 { color: #38bdf8; margin-top: 0; }
+    .badge {
+      display: inline-block;
+      background: #38bdf8;
+      color: #0f172a;
+      padding: 0.2rem 0.6rem;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+    }
+    #meta {
+      margin-top: 1.5rem;
+      padding-top: 1rem;
+      border-top: 1px solid #334155;
+      font-size: 0.85rem;
+      color: #94a3b8;
+    }
+    code { color: #38bdf8; }
+  </style>
+</head>
+<body>
+  <main>
+    <span class="badge">Catal-Log</span>
+    <h1>Site statique Catal-Log</h1>
+    <p>Cette page est servie par un conteneur Nginx construit, testé et publié via un pipeline CI/CD GitHub Actions.</p>
+    <p>Image construite depuis un <code>Dockerfile</code>, publiée dans GitHub Container Registry (GHCR), validée en recette simulée puis promue en production simulée sans reconstruction.</p>
+    <div id="meta">Chargement des informations de version…</div>
+  </main>
+  <script>
+    fetch("version.json")
+      .then((r) => r.json())
+      .then((data) => {
+        document.getElementById("meta").innerHTML =
+          `Projet : ${data.project}<br>Auteur : ${data.auteur}<br>Version : ${data.version}`;
+      })
+      .catch(() => {
+        document.getElementById("meta").textContent = "version.json indisponible";
+      });
+  </script>
+</body>
+</html>

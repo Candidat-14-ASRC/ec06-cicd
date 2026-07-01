@@ -1,0 +1,56 @@
+name: 01 - CI (build & test)
+
+# Controle automatique du projet : ce workflow tourne a chaque push et
+# pull request sur main, et peut aussi etre lance manuellement.
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout du depot
+        uses: actions/checkout@v4
+
+      - name: Build de l'image Docker (test local, non publiee)
+        run: docker build -t catal-log-site:ci .
+
+      - name: Demarrage du conteneur
+        run: docker run -d --name ci-test -p 8080:80 catal-log-site:ci
+
+      - name: Attente que Nginx reponde
+        run: |
+          for i in $(seq 1 10); do
+            if curl -sf http://localhost:8080/ > /dev/null; then
+              echo "Conteneur pret apres $i tentative(s)"
+              exit 0
+            fi
+            echo "Tentative $i : pas encore pret, attente 2s"
+            sleep 2
+          done
+          echo "Le conteneur n'a jamais repondu"
+          docker logs ci-test
+          exit 1
+
+      - name: Test HTTP automatise (code retour + contenu)
+        run: |
+          status=$(curl -s -o /tmp/body.html -w "%{http_code}" http://localhost:8080/)
+          echo "Code HTTP: $status"
+          test "$status" = "200"
+          grep -q "Catal-Log" /tmp/body.html
+
+      - name: Test du endpoint version.json
+        run: |
+          curl -sf http://localhost:8080/version.json | grep -q "EC06"
+
+      - name: Logs du conteneur (preuve d'execution)
+        if: always()
+        run: docker logs ci-test
+
+      - name: Nettoyage
+        if: always()
+        run: docker rm -f ci-test || true

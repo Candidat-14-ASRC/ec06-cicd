@@ -1,0 +1,52 @@
+# compose.yml
+# Orchestration legere (Docker Compose) pour le projet CICD EC06.
+#
+# Important : Docker Compose n'est PAS un orchestrateur de production.
+# Contrairement a Kubernetes, il n'y a ici ni reprogrammation automatique
+# des conteneurs en cas de panne de noeud, ni repartition de charge
+# multi-hotes native, ni auto-scaling pilote par des metriques. Compose
+# sert a decrire et coordonner localement plusieurs conteneurs lies.
+# Voir docs/01-architecture.md pour l'analyse complete des limites.
+
+services:
+  # Service principal : le site statique Catal-Log servi par Nginx.
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ghcr.io/${GITHUB_REPOSITORY:-owner/repo}:local
+    ports:
+      - "8080:80"
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    restart: unless-stopped
+
+  # Second service : un reverse proxy minimal, pour illustrer la
+  # coordination de plusieurs conteneurs (competence C13). En production
+  # reelle ce role serait tenu par un reverse proxy/load balancer dedie
+  # (Traefik, Nginx dedie, load balancer manage, etc.).
+  edge:
+    image: nginx:1.27-alpine
+    depends_on:
+      - web
+    ports:
+      - "8081:80"
+    volumes:
+      - ./compose/edge.conf:/etc/nginx/conf.d/default.conf:ro
+    restart: unless-stopped
+
+# Simulation de mise a l'echelle (documentee, a executer manuellement) :
+#   docker compose up --scale web=2
+#
+# Limite observee : "edge" pointe ici vers un seul hote "web" fixe dans sa
+# configuration Nginx (proxy_pass http://web:80). Docker Compose resout ce
+# nom via son DNS interne et distribue effectivement les requetes entre les
+# replicas "web" par round-robin DNS, MAIS il n'y a aucun health-check actif
+# cote "edge" ni retrait automatique d'un replica en panne : c'est une
+# repartition naive, pas une vraie gestion de charge. C'est cette limite,
+# et non l'absence totale de repartition, qui justifie qu'un orchestrateur
+# de production (Kubernetes + Service/Ingress) reste necessaire pour un
+# vrai environnement de production.

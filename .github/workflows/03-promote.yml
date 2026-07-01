@@ -1,0 +1,58 @@
+name: 03 - Promote to production-simulee
+
+# Promotion manuelle : declenchee a la main via workflow_dispatch, elle
+# reprend l'artefact deja construit et valide en recette (identifie par
+# son digest) et le republie sous un tag "production-simulee", SANS
+# reconstruire l'image. L'environnement GitHub "production-simulee" peut
+# etre protege par une regle d'approbation manuelle (Settings > Environments).
+on:
+  workflow_dispatch:
+    inputs:
+      digest:
+        description: "Digest de l'image validee en recette (ex: sha256:...)"
+        required: true
+        type: string
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    environment: production-simulee
+    steps:
+      - name: Connexion a GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull de l'artefact deja construit (sans rebuild)
+        run: docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ github.event.inputs.digest }}
+
+      - name: Re-tag vers production-simulee (meme digest, nouvelle etiquette)
+        run: |
+          docker tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ github.event.inputs.digest }} \
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:production-simulee
+          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:production-simulee
+
+      - name: Test de fumee en production simulee
+        run: |
+          docker run -d --name prod-test -p 8080:80 \
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ github.event.inputs.digest }}
+          sleep 3
+          curl -sf http://localhost:8080/ | grep -q "Catal-Log"
+          docker rm -f prod-test
+
+      - name: Resume (preuve de promotion sans rebuild)
+        run: |
+          echo "### Promotion effectuee" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Digest promu : \`${{ github.event.inputs.digest }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Nouveau tag : \`production-simulee\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Aucune reconstruction de l'image (meme digest source)" >> "$GITHUB_STEP_SUMMARY"

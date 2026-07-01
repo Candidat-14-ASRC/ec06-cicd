@@ -1,0 +1,90 @@
+name: 02 - Publish to GHCR
+
+# Publie l'image dans GitHub Container Registry, l'identifie par un tag
+# et un digest, puis valide l'artefact publie dans l'environnement
+# GitHub "recette" (creer cet environnement dans Settings > Environments).
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    environment: recette
+    outputs:
+      digest: ${{ steps.push.outputs.digest }}
+      tag: ${{ steps.meta.outputs.tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Connexion a GHCR
+        # Aucun secret stocke dans le code : GITHUB_TOKEN est genere
+        # automatiquement par GitHub Actions pour la duree du job.
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Definition du tag (sha courte)
+        id: meta
+        run: echo "tag=sha-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      - name: Build & push de l'image
+        id: push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.tag }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+
+      - name: Resume (preuve tag + digest)
+        run: |
+          echo "### Image publiee dans GHCR" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Tag : \`${{ steps.meta.outputs.tag }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Digest : \`${{ steps.push.outputs.digest }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Conserver ce digest : il sera utilise tel quel par le" >> "$GITHUB_STEP_SUMMARY"
+          echo "workflow 03-promote.yml, sans reconstruction." >> "$GITHUB_STEP_SUMMARY"
+
+  validate-recette:
+    needs: build-and-publish
+    runs-on: ubuntu-latest
+    environment: recette
+    steps:
+      - name: Connexion a GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull de l'image par digest (artefact exact, pas de rebuild)
+        run: docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ needs.build-and-publish.outputs.digest }}
+
+      - name: Demarrage en environnement recette simulee
+        run: |
+          docker run -d --name recette-test -p 8080:80 \
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ needs.build-and-publish.outputs.digest }}
+
+      - name: Test de validation recette
+        run: |
+          sleep 3
+          curl -sf http://localhost:8080/ | grep -q "Catal-Log"
+          echo "Validation recette OK pour le digest ${{ needs.build-and-publish.outputs.digest }}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Nettoyage
+        if: always()
+        run: docker rm -f recette-test || true
