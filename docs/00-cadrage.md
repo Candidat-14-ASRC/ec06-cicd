@@ -31,7 +31,10 @@ recette et production dans GitHub.
 | compose.yml | Orchestration legere, simulation de scaling |
 | Environnements GitHub | `recette` et `production-simulee` |
 
+## Depot
+- Depot GitHub individuel : https://github.com/Candidat-14-ASRC/ec06-cicd
+- Auteur : Candidat 14
+
 ## A completer par l'etudiant
-- [ ] Nom exact du depot GitHub et lien.
 - [ ] Date de debut / fin des 5 jours du module.
 - [ ] Toute contrainte personnelle (VM disponible ou non, etc.) a documenter ici.
