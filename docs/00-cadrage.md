@@ -34,7 +34,5 @@ recette et production dans GitHub.
 ## Depot
 - Depot GitHub individuel : https://github.com/Candidat-14-ASRC/ec06-cicd
 - Auteur : Candidat 14
-
-## A completer par l'etudiant
-- [ ] Date de debut / fin des 5 jours du module.
-- [ ] Toute contrainte personnelle (VM disponible ou non, etc.) a documenter ici.
+- Pas de VM personnelle dediee : tests locaux effectues via Docker Desktop (voir
+  `docs/03-preuves.md`).

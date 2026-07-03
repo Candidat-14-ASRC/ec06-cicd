@@ -49,7 +49,3 @@ registre GHCR devrait suivre le principe du moindre privilege, avec des roles di
 **Controle des vulnerabilites** : un scan automatique de l'image (ex: Trivy, Docker Scout)
 devrait etre integre au pipeline CI, avec un seuil bloquant pour les vulnerabilites critiques,
 afin d'empecher la publication d'une image vulnerable.
-
-## A completer par l'etudiant
-- [ ] Choisir eventuellement d'autres elements complementaires (supervision, haute
-      disponibilite, journalisation...) et les developper avec ses propres mots.

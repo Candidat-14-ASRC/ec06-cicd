@@ -31,7 +31,9 @@
   protection (reviewer obligatoire) dans Settings > Environments, ce qui simule un controle
   d'acces avant deploiement.
 
-## A completer par l'etudiant
-- [ ] Confirmer si un scan de vulnerabilites a ete ajoute, et documenter le resultat.
-- [ ] Documenter la configuration reelle des regles de protection des environnements (capture
-      d'ecran ou description).
+## Etat au rendu
+- Aucun scan de vulnerabilites automatise n'a ete ajoute (piste d'amelioration identifiee
+  ci-dessus, non implementee dans la version rendue).
+- Les regles de protection des environnements suivent la configuration par defaut de GitHub
+  (creation automatique de `recette` et `production-simulee` au premier usage par les
+  workflows) ; l'ajout de reviewers obligatoires reste une amelioration possible non activee.
